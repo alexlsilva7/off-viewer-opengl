@@ -12,15 +12,10 @@
 #define MAX_FILENAME_LENGTH 256
 #define TRUE 1
 #define FALSE 0
-#define HUD_ANIMATION_SPEED 0.1f
-#define CAMERA_SMOOTH_FACTOR 0.15f
-#define COLOR_ANIMATION_SPEED 0.05f
 
 // Estrutura para controlar a câmera
 typedef struct {
     float distance;      // Distância do objeto
-    float rotation_x;    // Rotação em X (pitch)
-    float rotation_y;    // Rotação em Y (yaw)
     float pan_x;         // Translação em X
     float pan_y;         // Translação em Y
 } Camera;
@@ -34,8 +29,8 @@ typedef enum {
 
 // Variáveis globais
 Mesh myMesh;
-Camera camera = {5.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-Camera initial_camera = {5.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+Camera camera = {5.0f, 0.0f, 0.0f};
+Camera initial_camera = {5.0f, 0.0f, 0.0f};
 RenderMode render_mode = RENDER_SOLID;
 char filename[MAX_FILENAME_LENGTH] = "";
 int show_hud = TRUE;
@@ -47,43 +42,20 @@ int mouse_right_pressed = FALSE;
 int last_mouse_x = 0;
 int last_mouse_y = 0;
 
-// Variáveis para animações e UI melhorada
-float hud_alpha = 1.0f;
-float help_alpha = 0.0f;
-float transition_time = 0.0f;
-int last_update_time = 0;
+// Variáveis para UI
 int fps_counter = 0;
 int fps_display = 0;
 int fps_timer = 0;
 
-// Temas de cores
-typedef struct {
-    float bg[3];
-    float object[3];
-    float text[3];
-    float accent[3];
-} ColorTheme;
-
-ColorTheme themes[] = {
-    {{0.1f, 0.1f, 0.15f}, {0.8f, 0.8f, 0.9f}, {1.0f, 1.0f, 1.0f}, {0.3f, 0.7f, 1.0f}}, // Azul moderno
-    {{0.05f, 0.05f, 0.05f}, {0.9f, 0.9f, 0.9f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.4f, 0.4f}}, // Escuro elegante
-    {{0.2f, 0.2f, 0.25f}, {0.7f, 0.8f, 0.9f}, {0.9f, 0.9f, 0.9f}, {0.4f, 0.8f, 0.4f}}, // Cinza profissional
-    {{0.1f, 0.15f, 0.2f}, {0.8f, 0.7f, 0.6f}, {1.0f, 0.95f, 0.9f}, {1.0f, 0.7f, 0.2f}}  // Aquecido
-};
-
-int current_theme = 0;
-int num_themes = sizeof(themes) / sizeof(ColorTheme);
-
-// Cores atuais (para transições suaves)
-float bg_color[3];
-float object_color[3];
-float text_color[3];
-float accent_color[3];
+// Cores fixas
+float bg_color[3] = {0.1f, 0.1f, 0.15f};
+float object_color[3] = {0.8f, 0.8f, 0.9f};
+float text_color[3] = {1.0f, 1.0f, 1.0f};
+float accent_color[3] = {0.3f, 0.7f, 1.0f};
 
 // Protótipos das funções
 void init_opengl();
 void setup_lighting();
-void calculate_mesh_normals();
 void display();
 void reshape(int w, int h);
 void keyboard(unsigned char key, int x, int y);
@@ -97,9 +69,6 @@ void draw_status_bar();
 void reset_camera();
 void render_text(float x, float y, const char* text);
 void render_text_centered(float x, float y, const char* text);
-void update_colors();
-void smooth_color_transition(float* current, float* target, float speed);
-void update_animations(int current_time);
 void calculate_fps();
 void draw_rounded_rect(float x, float y, float width, float height, float alpha);
 
@@ -117,22 +86,11 @@ void init_opengl() {
     glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
     glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
     
-    // Inicializar cores do tema atual
-    for (int i = 0; i < 3; i++) {
-        bg_color[i] = themes[current_theme].bg[i];
-        object_color[i] = themes[current_theme].object[i];
-        text_color[i] = themes[current_theme].text[i];
-        accent_color[i] = themes[current_theme].accent[i];
-    }
-    
     // Configurar cor de fundo
     glClearColor(bg_color[0], bg_color[1], bg_color[2], 1.0f);
     
     // Configurar iluminação
     setup_lighting();
-    
-    // Inicializar timer
-    last_update_time = glutGet(GLUT_ELAPSED_TIME);
 }
 
 // Função para configurar iluminação
@@ -163,22 +121,9 @@ void setup_lighting() {
     glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
 }
 
-// Função para calcular normais da malha (simplificada)
-void calculate_mesh_normals() {
-    // Para esta implementação, usaremos normais calculadas por face
-    // Em uma implementação mais avançada, calcularíamos normais por vértice
-}
 
 // Função de renderização principal
 void display() {
-    int current_time = glutGet(GLUT_ELAPSED_TIME);
-    
-    // Atualizar animações
-    update_animations(current_time);
-    
-    // Atualizar cores suavemente
-    update_colors();
-    
     // Calcular FPS
     calculate_fps();
     
@@ -187,8 +132,6 @@ void display() {
     
     // Aplicar transformações da câmera
     glTranslatef(camera.pan_x, camera.pan_y, -camera.distance);
-    glRotatef(camera.rotation_x, 1.0f, 0.0f, 0.0f);
-    glRotatef(camera.rotation_y, 0.0f, 1.0f, 0.0f);
     
     // Desenhar a malha
     draw_mesh();
@@ -197,19 +140,16 @@ void display() {
     draw_status_bar();
     
     // Desenhar HUD se habilitado
-    if (show_hud && hud_alpha > 0.0f) {
+    if (show_hud) {
         draw_hud();
     }
     
     // Desenhar menu de ajuda se habilitado
-    if (show_help && help_alpha > 0.0f) {
+    if (show_help) {
         draw_help_menu();
     }
     
     glutSwapBuffers();
-    
-    // Solicitar nova renderização para animações
-    glutPostRedisplay();
 }
 
 // Função para desenhar a malha
@@ -348,49 +288,50 @@ void draw_hud() {
     glDisable(GL_LIGHTING);
     glDisable(GL_DEPTH_TEST);
     
-    // Fundo semi-transparente para o HUD
+    // Fundo semi-transparente para o HUD com padding superior
+    float hud_top = WINDOW_HEIGHT - 170.0f;
     glEnable(GL_BLEND);
-    glColor4f(0.0f, 0.0f, 0.0f, hud_alpha * 0.5f);
+    glColor4f(0.0f, 0.0f, 0.0f, 0.5f);
     glBegin(GL_QUADS);
-    glVertex2f(0, WINDOW_HEIGHT - 160.0f);
-    glVertex2f(300, WINDOW_HEIGHT - 160.0f);
+    glVertex2f(0, hud_top);
+    glVertex2f(300, hud_top);
     glVertex2f(300, WINDOW_HEIGHT);
     glVertex2f(0, WINDOW_HEIGHT);
     glEnd();
     
     // Borda colorida
-    glColor4f(accent_color[0], accent_color[1], accent_color[2], hud_alpha);
+    glColor4f(accent_color[0], accent_color[1], accent_color[2], 1.0f);
     glLineWidth(2.0f);
     glBegin(GL_LINE_LOOP);
-    glVertex2f(0, WINDOW_HEIGHT - 160.0f);
-    glVertex2f(300, WINDOW_HEIGHT - 160.0f);
+    glVertex2f(0, hud_top);
+    glVertex2f(300, hud_top);
     glVertex2f(300, WINDOW_HEIGHT);
     glVertex2f(0, WINDOW_HEIGHT);
     glEnd();
     
-    glColor4f(text_color[0], text_color[1], text_color[2], hud_alpha);
+    glColor3f(text_color[0], text_color[1], text_color[2]);
     
-    // Informações do modelo
+    // Informações do modelo com padding
     char info[512];
     snprintf(info, sizeof(info), "Arquivo: %s", filename);
-    render_text(10.0f, WINDOW_HEIGHT - 150.0f, info);
+    render_text(10.0f, WINDOW_HEIGHT - 155.0f, info);
     
     snprintf(info, sizeof(info), "Vertices: %d  Faces: %d", myMesh.num_vertices, myMesh.num_faces);
-    render_text(10.0f, WINDOW_HEIGHT - 130.0f, info);
+    render_text(10.0f, WINDOW_HEIGHT - 135.0f, info);
     
     // Modo de renderização
     const char* mode_names[] = {"Solido", "Wireframe", "Pontos"};
     snprintf(info, sizeof(info), "Modo: %s", mode_names[render_mode]);
-    render_text(10.0f, WINDOW_HEIGHT - 110.0f, info);
+    render_text(10.0f, WINDOW_HEIGHT - 115.0f, info);
     
     // Controles básicos
-    glColor4f(accent_color[0], accent_color[1], accent_color[2], hud_alpha);
-    render_text(10.0f, WINDOW_HEIGHT - 85.0f, "Controles:");
+    glColor3f(accent_color[0], accent_color[1], accent_color[2]);
+    render_text(10.0f, WINDOW_HEIGHT - 90.0f, "Controles:");
     
-    glColor4f(text_color[0], text_color[1], text_color[2], hud_alpha * 0.8f);
-    render_text(10.0f, WINDOW_HEIGHT - 65.0f, "T: Tema  F1: Ajuda");
-    render_text(10.0f, WINDOW_HEIGHT - 45.0f, "H: HUD  R: Reset");
-    render_text(10.0f, WINDOW_HEIGHT - 25.0f, "W/S/P: Modo  ESC: Sair");
+    glColor3f(text_color[0], text_color[1], text_color[2]);
+    render_text(10.0f, WINDOW_HEIGHT - 70.0f, "H: HUD  F1: Ajuda");
+    render_text(10.0f, WINDOW_HEIGHT - 50.0f, "W/S/P: Modo  R: Reset");
+    render_text(10.0f, WINDOW_HEIGHT - 30.0f, "ESC: Sair");
     
     glDisable(GL_BLEND);
     
@@ -457,26 +398,6 @@ void keyboard(unsigned char key, int x, int y) {
             show_hud = !show_hud;
             break;
             
-        case 't':
-        case 'T':
-            current_theme = (current_theme + 1) % num_themes;
-            break;
-            
-        case '1':
-            current_theme = 0;
-            break;
-            
-        case '2':
-            current_theme = 1;
-            break;
-            
-        case '3':
-            current_theme = 2;
-            break;
-            
-        case '4':
-            current_theme = 3;
-            break;
     }
     
     glutPostRedisplay();
@@ -526,19 +447,9 @@ void mouse_motion(int x, int y) {
     int dx = x - last_mouse_x;
     int dy = y - last_mouse_y;
     
-    if (mouse_left_pressed) {
-        // Rotação
-        camera.rotation_y += dx * 0.5f;
-        camera.rotation_x += dy * 0.5f;
-        
-        // Limitar rotação em X
-        if (camera.rotation_x > 90.0f) camera.rotation_x = 90.0f;
-        if (camera.rotation_x < -90.0f) camera.rotation_x = -90.0f;
-        
-    } else if (mouse_right_pressed) {
+    if (mouse_left_pressed || mouse_right_pressed) {
         // Pan (translação)
-        // Ajustar sensibilidade com base na distância da câmera
-        float sensitivity = 0.001f * camera.distance; // Ajuste o multiplicador conforme necessário
+        float sensitivity = 0.001f * camera.distance;
         camera.pan_x += dx * sensitivity;
         camera.pan_y -= dy * sensitivity; // Inverter Y para movimento mais natural
     }
@@ -554,54 +465,6 @@ void reset_camera() {
     camera = initial_camera;
 }
 
-// Função para atualizar animações
-void update_animations(int current_time) {
-    float delta_time = (current_time - last_update_time) / 1000.0f;
-    last_update_time = current_time;
-    
-    // Atualizar alpha do HUD
-    if (show_hud) {
-        hud_alpha += HUD_ANIMATION_SPEED;
-        if (hud_alpha > 1.0f) hud_alpha = 1.0f;
-    } else {
-        hud_alpha -= HUD_ANIMATION_SPEED;
-        if (hud_alpha < 0.0f) hud_alpha = 0.0f;
-    }
-    
-    // Atualizar alpha do menu de ajuda
-    if (show_help) {
-        help_alpha += HUD_ANIMATION_SPEED;
-        if (help_alpha > 1.0f) help_alpha = 1.0f;
-    } else {
-        help_alpha -= HUD_ANIMATION_SPEED;
-        if (help_alpha < 0.0f) help_alpha = 0.0f;
-    }
-    
-    transition_time += delta_time;
-}
-
-// Função para transição suave de cores
-void smooth_color_transition(float* current, float* target, float speed) {
-    for (int i = 0; i < 3; i++) {
-        float diff = target[i] - current[i];
-        if (fabs(diff) > 0.001f) {
-            current[i] += diff * speed;
-        }
-    }
-}
-
-// Função para atualizar cores com transições suaves
-void update_colors() {
-    ColorTheme* theme = &themes[current_theme];
-    
-    smooth_color_transition(bg_color, theme->bg, COLOR_ANIMATION_SPEED);
-    smooth_color_transition(object_color, theme->object, COLOR_ANIMATION_SPEED);
-    smooth_color_transition(text_color, theme->text, COLOR_ANIMATION_SPEED);
-    smooth_color_transition(accent_color, theme->accent, COLOR_ANIMATION_SPEED);
-    
-    // Atualizar cor de fundo do OpenGL
-    glClearColor(bg_color[0], bg_color[1], bg_color[2], 1.0f);
-}
 
 // Função para calcular FPS
 void calculate_fps() {
@@ -680,11 +543,6 @@ void draw_status_bar() {
     
     render_text(20.0f, 28.0f, status_text);
     
-    // Indicador de tema atual
-    glColor3f(accent_color[0], accent_color[1], accent_color[2]);
-    char theme_text[32];
-    snprintf(theme_text, sizeof(theme_text), "Tema %d/%d", current_theme + 1, num_themes);
-    render_text(WINDOW_WIDTH - 120.0f, 28.0f, theme_text);
     
     // Restaurar estado
     glEnable(GL_DEPTH_TEST);
@@ -711,7 +569,7 @@ void draw_help_menu() {
     
     // Fundo semi-transparente
     glEnable(GL_BLEND);
-    glColor4f(0.0f, 0.0f, 0.0f, help_alpha * 0.8f);
+    glColor4f(0.0f, 0.0f, 0.0f, 0.8f);
     glBegin(GL_QUADS);
     glVertex2f(0, 0);
     glVertex2f(WINDOW_WIDTH, 0);
@@ -720,39 +578,55 @@ void draw_help_menu() {
     glEnd();
     
     // Janela de ajuda centralizada
-    float help_width = 400.0f;
-    float help_height = 300.0f;
+    float help_width = 480.0f;
+    float help_height = 350.0f;
     float help_x = (WINDOW_WIDTH - help_width) / 2.0f;
     float help_y = (WINDOW_HEIGHT - help_height) / 2.0f;
     
-    draw_rounded_rect(help_x, help_y, help_width, help_height, help_alpha);
+    draw_rounded_rect(help_x, help_y, help_width, help_height, 1.0f);
     
-    // Título
-    glColor4f(accent_color[0], accent_color[1], accent_color[2], help_alpha);
-    render_text_centered(WINDOW_WIDTH / 2.0f, help_y + 30.0f, "AJUDA - CONTROLES");
+    // Título principal
+    glColor3f(accent_color[0], accent_color[1], accent_color[2]);
+    render_text_centered(WINDOW_WIDTH / 2.0f, help_y + 25.0f, "=== AJUDA - VISUALIZADOR OFF ===");
     
     // Conteúdo da ajuda
-    glColor4f(text_color[0], text_color[1], text_color[2], help_alpha);
-    float line_height = 20.0f;
-    float start_y = help_y + 60.0f;
+    glColor3f(text_color[0], text_color[1], text_color[2]);
+    float line_height = 18.0f;
+    float start_y = help_y + 50.0f;
+    float col1_x = help_x + 20.0f;
+    float col2_x = help_x + 250.0f;
     
-    render_text(help_x + 20.0f, start_y, "MOUSE:");
-    render_text(help_x + 30.0f, start_y + line_height, "• Botao Esquerdo + Arrastar: Rotacao");
-    render_text(help_x + 30.0f, start_y + line_height * 2, "• Botao Direito + Arrastar: Pan");
-    render_text(help_x + 30.0f, start_y + line_height * 3, "• Scroll: Zoom In/Out");
+    // Coluna 1 - Controles do Mouse
+    glColor3f(accent_color[0], accent_color[1], accent_color[2]);
+    render_text(col1_x, start_y, "CONTROLES DO MOUSE:");
+    glColor3f(text_color[0], text_color[1], text_color[2]);
+    render_text(col1_x + 10.0f, start_y + line_height * 1.5f, "Arrastar com qualquer botao:");
+    render_text(col1_x + 20.0f, start_y + line_height * 2.5f, "- Move o objeto (Pan)");
+    render_text(col1_x + 10.0f, start_y + line_height * 4.0f, "Roda do mouse:");
+    render_text(col1_x + 20.0f, start_y + line_height * 5.0f, "- Zoom In/Out");
     
-    render_text(help_x + 20.0f, start_y + line_height * 5, "TECLADO:");
-    render_text(help_x + 30.0f, start_y + line_height * 6, "• W: Modo Wireframe");
-    render_text(help_x + 30.0f, start_y + line_height * 7, "• S: Modo Solido");
-    render_text(help_x + 30.0f, start_y + line_height * 8, "• P: Modo Pontos");
-    render_text(help_x + 30.0f, start_y + line_height * 9, "• R: Reset Camera");
-    render_text(help_x + 30.0f, start_y + line_height * 10, "• H: Toggle HUD");
-    render_text(help_x + 30.0f, start_y + line_height * 11, "• T: Proximo Tema");
-    render_text(help_x + 30.0f, start_y + line_height * 12, "• F1: Esta Ajuda");
+    // Coluna 2 - Controles do Teclado
+    glColor3f(accent_color[0], accent_color[1], accent_color[2]);
+    render_text(col2_x, start_y, "CONTROLES DO TECLADO:");
+    glColor3f(text_color[0], text_color[1], text_color[2]);
+    render_text(col2_x + 10.0f, start_y + line_height * 1.5f, "W - Modo Wireframe");
+    render_text(col2_x + 10.0f, start_y + line_height * 2.5f, "S - Modo Solido");
+    render_text(col2_x + 10.0f, start_y + line_height * 3.5f, "P - Modo Pontos");
+    render_text(col2_x + 10.0f, start_y + line_height * 5.0f, "R - Reset Camera");
+    render_text(col2_x + 10.0f, start_y + line_height * 6.0f, "H - Mostrar/Ocultar HUD");
+    render_text(col2_x + 10.0f, start_y + line_height * 7.0f, "F1 - Esta Ajuda");
+    render_text(col2_x + 10.0f, start_y + line_height * 8.0f, "ESC - Sair do programa");
     
-    // Instrução para fechar
-    glColor4f(accent_color[0], accent_color[1], accent_color[2], help_alpha);
-    render_text_centered(WINDOW_WIDTH / 2.0f, help_y + help_height - 20.0f, "Pressione F1 novamente para fechar");
+    // Seção de informações adicionais
+    glColor3f(accent_color[0], accent_color[1], accent_color[2]);
+    render_text(col1_x, start_y + line_height * 10.0f, "SOBRE O PROGRAMA:");
+    glColor3f(text_color[0], text_color[1], text_color[2]);
+    render_text(col1_x + 10.0f, start_y + line_height * 11.5f, "Visualizador simplificado de arquivos OFF (Object File Format)");
+    render_text(col1_x + 10.0f, start_y + line_height * 12.5f, "Suporta malhas triangulares e quadrilaterais");
+    
+    // Instrução para fechar (destacada)
+    glColor3f(accent_color[0], accent_color[1], accent_color[2]);
+    render_text_centered(WINDOW_WIDTH / 2.0f, help_y + help_height - 25.0f, ">>> Pressione F1 novamente para fechar <<<");
     
     glDisable(GL_BLEND);
     
@@ -779,7 +653,7 @@ int main(int argc, char **argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
-    glutCreateWindow("Visualizador OFF Melhorado");
+    glutCreateWindow("Visualizador OFF");
     
     // Inicializar OpenGL
     init_opengl();
@@ -794,8 +668,6 @@ int main(int argc, char **argv) {
     printf("Malha carregada com sucesso: %d vertices, %d faces.\n", 
            myMesh.num_vertices, myMesh.num_faces);
     
-    // Calcular normais
-    calculate_mesh_normals();
     
     // Configurar callbacks
     glutDisplayFunc(display);

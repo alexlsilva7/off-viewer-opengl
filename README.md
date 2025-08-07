@@ -1,12 +1,11 @@
-# Visualizador OFF Melhorado
+# Visualizador OFF Simplificado
 
-Um visualizador 3D interativo para arquivos no formato OFF (Object File Format) desenvolvido em C com OpenGL/GLUT.
+Um visualizador 3D simplificado para arquivos no formato OFF (Object File Format) desenvolvido em C com OpenGL/GLUT.
 
 ## Características
 
 ### 🎮 Controles Interativos
-- **Rotação**: Clique e arraste com o botão esquerdo do mouse
-- **Pan (Translação)**: Clique e arraste com o botão direito do mouse
+- **Pan (Movimento)**: Clique e arraste com qualquer botão do mouse
 - **Zoom**: Use a roda do mouse (scroll)
 - **Reset da Câmera**: Pressione `R` para voltar à posição inicial
 
@@ -15,20 +14,10 @@ Um visualizador 3D interativo para arquivos no formato OFF (Object File Format) 
 - **Wireframe** (`W`): Visualização das arestas do modelo
 - **Pontos** (`P`): Exibição apenas dos vértices
 
-### 🎨 Temas Visuais Modernos
-- **4 Temas Pré-definidos**:
-  - `1`: Azul Moderno (padrão)
-  - `2`: Escuro Elegante
-  - `3`: Cinza Profissional
-  - `4`: Aquecido
-- **Troca de Temas**: Pressione `T` para alternar entre temas
-- **Transições Suaves**: Animações fluidas entre cores
-
-### ✨ Interface de Usuário Moderna
-- **Barra de Status**: Exibe FPS, estatísticas do modelo e tema atual
-- **HUD Animado**: Interface com transparência e animações suaves
-- **Menu de Ajuda Interativo**: Pressione `F1` para exibir controles detalhados
-- **Feedback Visual**: Bordas coloridas e elementos destacados
+### ✨ Interface de Usuário Limpa
+- **Barra de Status**: Exibe FPS, estatísticas do modelo e modo de renderização
+- **HUD Informativo**: Interface simples com informações essenciais
+- **Menu de Ajuda Completo**: Pressione `F1` para exibir controles detalhados
 - **Contador de FPS**: Monitoramento de performance em tempo real
 
 ## Requisitos do Sistema
@@ -107,18 +96,12 @@ make run-hand      # Usa ../hand-hybrid.off
 | `P` | Modo Pontos |
 | `R` | Reset da câmera |
 | `H` | Toggle do HUD |
-| `T` | Alternar tema (próximo) |
 | `F1` | Menu de ajuda interativo |
-| `1` | Tema Azul Moderno |
-| `2` | Tema Escuro Elegante |
-| `3` | Tema Cinza Profissional |
-| `4` | Tema Aquecido |
 
 ### Mouse
 | Ação | Função |
 |------|--------|
-| Botão esquerdo + arraste | Rotacionar objeto |
-| Botão direito + arraste | Mover objeto (pan) |
+| Qualquer botão + arraste | Mover objeto (pan) |
 | Roda do mouse | Zoom in/out |
 
 ## Formato de Arquivo OFF
@@ -141,29 +124,29 @@ x2 y2 z2
 - ✅ Coordenadas de vértices em ponto flutuante
 - ✅ Cálculo automático de normais para iluminação
 
-## Melhorias Implementadas
+## Características da Versão Simplificada
 
-### Comparado à Versão Original
-1. **Controles de Câmera Avançados**
-   - Rotação orbit completa
-   - Sistema de pan/translação
-   - Zoom suave e limitado
+### Simplificações Realizadas
+1. **Controles Simplificados**
+   - Removida rotação 3D complexa
+   - Mantido apenas pan (movimento) e zoom
+   - Interface mais intuitiva
 
-2. **Qualidade Visual**
+2. **Código Limpo**
+   - Removido sistema de temas múltiplos
+   - Removidas animações e transições
+   - Código mais focado e legível
+
+3. **Interface Direta**
+   - HUD com informações essenciais
+   - Menu de ajuda reorganizado
+   - Controles claros e diretos
+
+4. **Mantidas Funcionalidades Essenciais**
+   - Três modos de renderização
    - Iluminação e sombreamento
-   - Múltiplos modos de renderização
-   - Cores personalizáveis
-   - Anti-aliasing para linhas e pontos
-
-3. **Interface do Usuário**
-   - HUD informativo
-   - Controles intuitivos
-   - Feedback visual em tempo real
-
-4. **Robustez**
-   - Tratamento de erros melhorado
-   - Gerenciamento de memória seguro
-   - Suporte a diferentes tipos de face
+   - Suporte a malhas triangulares e quadrilaterais
+   - Contador de FPS
 
 ## Solução de Problemas
 
@@ -195,7 +178,7 @@ make memcheck FILE=arquivo.off
 ## Arquitetura do Código
 
 ### Estruturas Principais
-- `Camera`: Controla posição, rotação e zoom
+- `Camera`: Controla posição, movimento (pan) e zoom
 - `Mesh`: Armazena vértices e faces do modelo
 - `RenderMode`: Enumera modos de renderização
 

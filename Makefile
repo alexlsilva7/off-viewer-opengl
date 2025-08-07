@@ -1,4 +1,4 @@
-# Makefile para o Visualizador OFF Melhorado
+# Makefile para o Visualizador OFF
 # Compilador
 CC = gcc
 
@@ -53,10 +53,10 @@ install-deps:
 
 # Executar com arquivo de exemplo
 run-triangles: $(TARGET)
-	./$(TARGET) ../triangles.off
+	./$(TARGET) ./triangles.off
 
 run-hand: $(TARGET)
-	./$(TARGET) ../hand-hybrid.off
+	./$(TARGET) ./hand-hybrid.off
 
 # Executar com arquivo personalizado
 run: $(TARGET)
